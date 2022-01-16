@@ -1,0 +1,9 @@
+#!/bin/bash
+
+tmux new-session -d 'radeontop' 
+tmux split-window -h "watch -n0.1 \"sensors | grep '°C\|power\|mV\|rpm'\""
+tmux select-pane -t 0
+tmux split-window -v
+
+tmux a
+

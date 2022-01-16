@@ -1,0 +1,10 @@
+#!/bin/bash
+
+echo "r" > /sys/class/drm/card0/device/pp_od_clk_voltage
+echo "c" > /sys/class/drm/card0/device/pp_od_clk_voltage
+cat /sys/class/drm/card0/device/pp_od_clk_voltage
+
+cat /sys/class/drm/card0/device/hwmon/hwmon6/power1_cap_default > /sys/class/drm/card0/device/hwmon/hwmon6/power1_cap
+cat /sys/class/drm/card0/device/hwmon/hwmon6/power1_cap
+
+

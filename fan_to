@@ -1,0 +1,33 @@
+#!/bin/bash
+
+if [ -z $1 ]; then
+  echo "Missing input"
+  exit
+fi
+
+if [ $1 -lt 100 ]; then
+  TARGET_PERCENT=$1
+else
+  TARGET_PERCENT=100
+fi
+
+PWM_VALUE=`echo "scale=2;$TARGET_PERCENT/100 * 255" | bc | awk '{print int($1 + 0.5)}'`
+
+# Case fans
+TOP=pwm1
+BOTTOM=pwm5
+
+FANS="$TOP $BOTTOM"
+
+for FAN in $FANS
+do
+  echo "Adjusting $FAN"
+
+  BASE_PATH="/sys/class/hwmon/hwmon5/"
+
+  echo "  Enabling manual control"
+  echo 1 | sudo tee "$BASE_PATH""$FAN"_enable >/dev/null
+
+  echo "  Adjusting speed to $TARGET_PERCENT% (pwm = $PWM_VALUE)"
+  echo $PWM_VALUE | sudo tee "$BASE_PATH""$FAN" >/dev/null
+done
