@@ -1,9 +1,16 @@
 #!/bin/bash
 
-tmux new-session -d 'radeontop' 
-tmux split-window -h "watch -n0.1 \"sensors | grep '°C\|power\|mV\|rpm'\""
-tmux select-pane -t 0
-tmux split-window -v
+SESSION_NAME="monitors"
 
-tmux a
+if tmux has-session -t $SESSION_NAME; then
+  echo "Session already exists"
+else
+  echo "Creating new session"
 
+  tmux new -s $SESSION_NAME -d 'radeontop'
+  tmux split-window -h "watch -n0.1 \"sensors | grep '°C\|power\|mV\|rpm'\""
+  tmux select-pane -t 0
+  tmux split-window -v
+fi
+
+tmux a -t $SESSION_NAME
