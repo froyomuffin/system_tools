@@ -1,0 +1,6 @@
+[Unit]
+Description=Small daemon to proxy fan adjustments without needing root using "fanc"
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/fand
