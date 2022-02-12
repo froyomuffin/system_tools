@@ -8,8 +8,9 @@ else
   echo "Creating new session"
 
   tmux new -s $SESSION_NAME -d 'radeontop'
-  tmux split-window -h "watch -n0.1 \"sensors | grep '°C\|power\|mV\|rpm'\""
+  tmux split-window -h "watch -n0.1 \"sensors | grep '°C\|power\|mV\|RPM'\""
   tmux select-pane -t 0
+  tmux split-window -v "htop"
   tmux split-window -v
 fi
 
