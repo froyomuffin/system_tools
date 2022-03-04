@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SOCKET=/tmp/fand
-LAST_FILE=/tmp/fand.last
+LAST_FILE=/var/tmp/fand.last
 
 NUMBER_REGEX='^[0-9]+$'
 
@@ -15,12 +15,17 @@ function fan_to {
   BOTTOM=pwm5
 
   FANS="$TOP $BOTTOM"
+  FAN_DEVICE="nct6775.656"
+
+  HWMON_BASE="/sys/class/hwmon"
+  HWMON=$(ls -l /sys/class/hwmon | grep $FAN_DEVICE | awk '{ print $9 }')
+
+  BASE_PATH="$HWMON_BASE/$HWMON"
+  echo "Found device at \"$BASE_PATH\""
 
   for FAN in $FANS
   do
     echo "Adjusting $FAN"
-
-    BASE_PATH="/sys/class/hwmon/hwmon5"
 
     echo "  Enabling manual control"
     echo 1 > "$BASE_PATH"/"$FAN"_enable
