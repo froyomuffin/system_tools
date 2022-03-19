@@ -10,11 +10,12 @@ function fan_to {
 
   PWM_VALUE=`echo "scale=2;$TARGET_PERCENT/100 * 255" | bc | awk '{print int($1 + 0.5)}'`
 
-  # Case fans
-  TOP=pwm1
-  BOTTOM=pwm5
+  # Fan definitions
+  GPU=pwm1
+  CPU=pwm2
+  CASE=pwm5
 
-  FANS="$TOP $BOTTOM"
+  FANS="$GPU $CPU $CASE"
   FAN_DEVICE="nct6775.656"
 
   HWMON_BASE="/sys/class/hwmon"
