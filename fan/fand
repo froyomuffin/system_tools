@@ -2,6 +2,7 @@
 
 SOCKET=/tmp/fand
 LAST_FILE=/var/tmp/fand.last
+TMP_LAST_FILE=/tmp/fand.last
 
 NUMBER_REGEX='^[0-9]+$'
 
@@ -36,6 +37,7 @@ function fan_to {
 
     echo "Updating history file"
     echo $TARGET_PERCENT > $LAST_FILE
+    echo $TARGET_PERCENT > $TMP_LAST_FILE
   done
 }
 
@@ -45,6 +47,7 @@ if [[ ! -p $SOCKET ]]; then
 fi
 
 touch $LAST_FILE
+touch $TMP_LAST_FILE
 
 echo "Starting fand"
 
