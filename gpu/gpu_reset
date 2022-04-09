@@ -1,0 +1,10 @@
+#!/bin/bash
+
+echo "r" | sudo tee /sys/class/drm/card0/device/pp_od_clk_voltage >/dev/null
+echo "c" | sudo tee /sys/class/drm/card0/device/pp_od_clk_voltage >/dev/null
+cat /sys/class/drm/card0/device/pp_od_clk_voltage
+
+cat /sys/class/drm/card0/device/hwmon/hwmon6/power1_cap_default | sudo tee /sys/class/drm/card0/device/hwmon/hwmon6/power1_cap >/dev/null
+cat /sys/class/drm/card0/device/hwmon/hwmon6/power1_cap
+
+
