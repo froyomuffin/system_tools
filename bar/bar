@@ -1,0 +1,48 @@
+#/bin/bash
+
+function do_times {
+  TIMES="$1"
+  CMD="${@:2}"
+
+  for run in $(seq $TIMES); do
+    eval "$CMD"
+  done
+}
+
+function reset() {
+  LINE_UP=$(tput cuu1)
+  ERASE_LINE=$(tput el)
+
+  echo -e "$LINE_UP$ERASE_LINE\c"
+}
+
+function get_window_width() {
+  echo $(tput cols)
+}
+
+function draw_progress() {
+  PERCENT=$1
+  LENGTH=$2
+
+  if [[ -z $LENGTH ]]; then
+    LENGTH=$(get_window_width)
+  fi
+
+  FULL="━"
+  EMPTY="┈"
+
+  PROGRESS_LENGTH=$(echo "scale=0; $LENGTH - 10 - 2 - 2" | bc -l)
+
+  FULL_AMOUNT=$(echo "scale=0; $PERCENT * $PROGRESS_LENGTH / 100" | bc -l)
+  EMPTY_AMOUNT=$(echo "scale=0; $PROGRESS_LENGTH - $FULL_AMOUNT" | bc -l)
+
+  PROGRESS_FULL_PART=$(do_times $FULL_AMOUNT "echo -ne \"$FULL\"")
+  PROGRESS_EMPTY_PART=$(do_times $EMPTY_AMOUNT "echo -ne \"$EMPTY\"")
+
+  PERCENT_PART="[$PERCENT%]"
+
+  PROGRESS_BAR_LINE=" $PROGRESS_FULL_PART$PROGRESS_EMPTY_PART $PERCENT_PART"
+
+  reset
+  echo "$PROGRESS_BAR_LINE"
+}

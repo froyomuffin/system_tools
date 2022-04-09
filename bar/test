@@ -1,0 +1,23 @@
+#/bin/bash
+
+source ./bar
+
+SPEED=10
+
+BASE_TICKS=1000
+function ticks() {
+  echo "scale=0; $BASE_TICKS / $SPEED" | bc -l
+}
+
+function dampening_factor() {
+  echo "scale=0; $(ticks) / 100" | bc -l
+}
+
+for i in $(seq $(ticks)); do
+  if [[ $(dampening_factor) -le 0 ]]; then
+    PROGRESS=100
+  else
+    PROGRESS=$(echo "scale=1; $i / $(dampening_factor)" | bc -l)
+  fi
+  draw_progress $PROGRESS
+done
