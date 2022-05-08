@@ -1,0 +1,10 @@
+[Unit]
+Description=Manage brightd on resume from suspend
+After=suspend.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/systemctl --no-block restart brightd.service
+
+[Install]
+WantedBy=suspend.target

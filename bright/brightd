@@ -1,0 +1,51 @@
+#!/bin/bash
+
+SOCKET=/tmp/brightd
+LAST_FILE=/var/tmp/brightd.last
+TMP_LAST_FILE=/tmp/brightd.last
+
+NUMBER_REGEX='^[0-9]+$'
+
+function brightness_to {
+  TARGET_PERCENT=$1
+
+  ddcutil setvcp 10 $TARGET_PERCENT
+
+  echo $TARGET_PERCENT > $LAST_FILE
+  echo $TARGET_PERCENT > $TMP_LAST_FILE
+}
+
+echo "Starting brightd"
+
+touch $LAST_FILE
+touch $TMP_LAST_FILE
+
+trap "rm -f $SOCKET" EXIT
+if [[ ! -p $SOCKET ]]; then
+  mkfifo $SOCKET -m0666
+fi
+
+modprobe i2c-dev
+
+LAST_PERCENT=$(cat $LAST_FILE)
+
+if [[ $LAST_PERCENT =~ $NUMBER_REGEX ]]; then
+  echo "Restoring fan from history"
+  brightness_to $LAST_PERCENT
+fi
+
+while true; do
+  if read INPUT <$SOCKET; then
+    if [[ "$INPUT" == 'quit' ]]; then
+      echo "Quitting"
+      break
+    fi
+
+    echo "Got:"
+    echo "$INPUT"
+
+    brightness_to "$INPUT"
+  fi
+done
+
+echo "Exiting brightd"
