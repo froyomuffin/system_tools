@@ -13,15 +13,4 @@ if [ -z $1 ]; then
   exit
 fi
 
-if ! [[ $1 =~ $NUMBER_REGEX ]]; then
-  echo 'Invalid input'
-  exit
-fi
-
-if [ $1 -lt 100 ]; then
-  TARGET_PERCENT=$1
-else
-  TARGET_PERCENT=100
-fi
-
-echo $TARGET_PERCENT > $SOCKET
+echo $1 > $SOCKET

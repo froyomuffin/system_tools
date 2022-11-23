@@ -2,23 +2,28 @@
 
 SOCKET=/tmp/brightd
 LAST_FILE=/var/tmp/brightd.last
-TMP_LAST_FILE=/tmp/brightd.last
 
 NUMBER_REGEX='^[0-9]+$'
 
 function brightness_to {
   TARGET_PERCENT=$1
 
+  if [ $TARGET_PERCENT -gt 100 ]; then
+    TARGET_PERCENT=100
+  fi
+
+  if [ $TARGET_PERCENT -lt 0 ]; then
+    TARGET_PERCENT=0
+  fi
+
   ddcutil setvcp 10 $TARGET_PERCENT
 
   echo $TARGET_PERCENT > $LAST_FILE
-  echo $TARGET_PERCENT > $TMP_LAST_FILE
 }
 
 echo "Starting brightd"
 
 touch $LAST_FILE
-touch $TMP_LAST_FILE
 
 trap "rm -f $SOCKET" EXIT
 if [[ ! -p $SOCKET ]]; then
@@ -34,17 +39,35 @@ if [[ $LAST_PERCENT =~ $NUMBER_REGEX ]]; then
   brightness_to $LAST_PERCENT
 fi
 
+INCREMENT=5
+
 while true; do
   if read INPUT <$SOCKET; then
-    if [[ "$INPUT" == 'quit' ]]; then
-      echo "Quitting"
-      break
-    fi
+    case $INPUT in
+      'quit')
+        echo "Quitting"
+        break
+        ;;
+      'up')
+        echo "Raising brightness"
+        LAST_PERCENT=$(cat $LAST_FILE)
+        NEW_PERCENT=$(echo "$LAST_PERCENT + $INCREMENT" | bc)
+        echo "Last: $LAST_PERCENT"
+        echo "New: $NEW_PERCENT"
+        brightness_to "$NEW_PERCENT"
+        ;;
+      'down')
+        echo "Raising brightness"
+        LAST_PERCENT=$(cat $LAST_FILE)
+        NEW_PERCENT=$(echo "$LAST_PERCENT - $INCREMENT" | bc)
+        brightness_to "$NEW_PERCENT"
+        ;;
+      *)
+        echo "Got: $INPUT"
 
-    echo "Got:"
-    echo "$INPUT"
-
-    brightness_to "$INPUT"
+        brightness_to "$INPUT"
+        ;;
+    esac
   fi
 done
 
