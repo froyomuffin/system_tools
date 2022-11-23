@@ -1,0 +1,69 @@
+#!/bin/bash
+
+LAYOUTS_DIR="$HOME/.config/i3/layouts"
+
+mkdir -p $LAYOUTS_DIR
+
+function save {
+  WORKSPACE=$1
+  SLOT=$2
+  LAYOUT_FILE="$LAYOUTS_DIR/$SLOT.layout"
+
+
+  TREE=$(i3-save-tree --workspace $WORKSPACE | sed 's|^\(\s*\)// "|\1"|g; /^\s*\/\//d' | grep -v 'title')
+
+  echo "Saving workspace $WORKSPACE to $LAYOUT_FILE"
+
+  echo "$TREE" > $LAYOUT_FILE
+}
+
+function load {
+  SLOT=$1
+  WORKSPACE=$2
+  LAYOUT_FILE="$LAYOUTS_DIR/$SLOT.layout"
+
+
+  if [ ! -f $LAYOUT_FILE ]; then
+    echo "No layouts saved at slot $SLOT"
+  else
+    echo "Loading $LAYOUT_FILE to workspace $WORKSPACE"
+
+    INSTANCES=$(cat $LAYOUT_FILE | grep '"instance"' | awk '{ print $2 }' | sed 's/,//g')
+    EXECUTABLES=$(cat $LAYOUT_FILE | grep '"executable"' | awk '{ print $2 }' | sed 's/,//g')
+
+    if [[ $(echo "$INSTANCES" | wc -l) -eq $(echo "$EXECUTABLES" | wc -l) ]]; then
+      echo "Creating layout"
+      i3-msg "workspace $WORKSPACE; append_layout $LAYOUT_FILE"
+      
+      echo "Starting executables"
+      for EXECUTABLE in $EXECUTABLES; do
+        echo $EXECUTABLE
+        eval $EXECUTABLE
+      done
+    else
+      echo "Some instances don't have defined executables. Aborting."
+    fi
+  fi
+}
+
+function handle {
+  CMD=$1
+
+  echo $1
+  echo $2 
+  echo $3
+
+  case $CMD in
+    save)
+      save $2 $3
+      ;;
+    load)
+      load $2 $3
+      ;;
+    *)
+      echo "Unknown command: $1"
+      ;;
+  esac
+}
+
+handle $*
