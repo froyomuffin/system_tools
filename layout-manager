@@ -1,0 +1,148 @@
+#!/usr/bin/ruby
+
+require 'json'
+
+class ExecutableManager
+  def initialize(file_location)
+    @file_location = file_location
+    
+    file = File.read(@file_location)
+    @mapping = JSON.parse(file)
+  rescue
+    File.write(@file_location, "{}")
+
+    @mapping = {}
+  end
+
+  def set(key, value)
+    @mapping[key] = value
+
+    File.write(@file_location, JSON.pretty_generate(@mapping))
+  end
+
+  def get(key)
+    @mapping[key]
+  end
+end
+
+class LayoutManager
+  def initialize(layout_directory, executable_manager, prompt = false)
+    @layout_directory = layout_directory
+    @executable_manager = executable_manager
+    @prompt = prompt
+  end
+
+  def save(workspace, slot)
+    command = "i3-save-tree --workspace #{workspace}"
+    layout = decomment_layout(`#{command}`)
+
+    layout_file = "#{@layout_directory}/#{slot}.layout"
+    File.write(layout_file, layout)
+
+    executable_mapping = extract_executables(layout)
+    instances_missing_executables = find_instances_missing_executables(executable_mapping)
+
+    unless instances_missing_executables.empty?
+      instances_missing_executables.each do |instance|
+        puts "Missing executable definition for instance \"#{instance}\""
+        puts "Initializing executable definition for instance \"#{instance}\""
+
+        if @prompt
+          puts "Enter executable for \"#{instance}\""
+          print "> "
+          executable = ::STDIN.gets.chomp
+
+          puts "Setting it to \"#{executable}\""
+          @executable_manager.set(instance, executable)
+        else
+          @executable_manager.set(instance, "")
+        end
+      end
+    end
+  end
+
+  def load(slot, workspace)
+    layout_file = "#{@layout_directory}/#{slot}.layout"
+    layout = File.read(layout_file)
+
+    executable_mapping = extract_executables(layout)
+    instances_missing_executables = find_instances_missing_executables(executable_mapping)
+
+    if instances_missing_executables.empty?
+      apply_layout(slot, workspace)
+      launch_executables(executable_mapping)
+    end
+  end
+
+  private
+
+  def extract_executables(layout)
+    instances = layout
+      .split("\n")
+      .grep(/instance/)
+      .map(&:strip).map do |instance|
+        instance.match(/: "(.*?)",/)[1]
+      end
+
+    instances.map do |instance|
+      [instance, @executable_manager.get(instance)]
+    end
+  end
+
+  def find_instances_missing_executables(mapping)
+    mapping
+      .select { |instance, executable| executable.nil? || executable == "" }
+      .map { |instance, executable| instance }
+  end
+
+  def apply_layout(slot, workspace)
+    layout_file = "#{@layout_directory}/#{slot}.layout"
+    command = "i3-msg \"workspace #{workspace}; append_layout #{layout_file}\""
+    `#{command}`
+  end
+
+  def launch_executables(executables_mapping)
+    executables_mapping.each do |instance, executable|
+      `#{executable} &`
+    end
+  end
+
+  def decomment_layout(layout)
+    layout
+      .gsub(/\/\/ "/, '  "')
+      .gsub(/\/\/.*/, '')
+  end
+
+  # def clean_layout(layout)
+  #   decoment_layout(layout)
+  #     .split(/\n{2,}/)
+  #     .compact
+  # end
+
+  def add_executables(instances)
+    instances.map do |instance|
+      [instance, @executable_manager.get(instance)]
+    end.to_h
+  end
+end
+
+command = ARGV[0]
+layouts_directory = "#{File.expand_path('~')}/.config/i3/layouts"
+map_file = "#{layouts_directory}/map.json"
+executable_manager = ExecutableManager.new(map_file)
+layout_manager = LayoutManager.new(layouts_directory, executable_manager)
+
+case command
+when "save"
+  workspace = ARGV[1]
+  slot = ARGV[2]
+
+  layout_manager.save(workspace, slot)
+when "load"
+  slot = ARGV[1]
+  workspace = ARGV[2]
+
+  layout_manager.load(slot, workspace)
+else
+  puts "Unknown command: #{command}"
+end
