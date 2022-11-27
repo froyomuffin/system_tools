@@ -1,5 +1,7 @@
 #!/bin/bash
 
+exit
+
 echo "r" | sudo tee /sys/class/drm/card0/device/pp_od_clk_voltage >/dev/null
 echo "c" | sudo tee /sys/class/drm/card0/device/pp_od_clk_voltage >/dev/null
 cat /sys/class/drm/card0/device/pp_od_clk_voltage

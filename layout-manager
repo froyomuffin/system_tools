@@ -5,7 +5,7 @@ require 'json'
 class ExecutableManager
   def initialize(file_location)
     @file_location = file_location
-    
+
     file = File.read(@file_location)
     @mapping = JSON.parse(file)
   rescue
@@ -33,8 +33,10 @@ class LayoutManager
   end
 
   def save(workspace, slot)
+    puts "Saving workspace \"#{workspace}\" to slot \"#{slot}\""
+
     command = "i3-save-tree --workspace #{workspace}"
-    layout = decomment_layout(`#{command}`)
+    layout = process_layout(`#{command}`)
 
     layout_file = "#{@layout_directory}/#{slot}.layout"
     File.write(layout_file, layout)
@@ -43,7 +45,7 @@ class LayoutManager
     instances_missing_executables = find_instances_missing_executables(executable_mapping)
 
     unless instances_missing_executables.empty?
-      instances_missing_executables.each do |instance|
+      instances_missing_executables.sort.uniq.each do |instance|
         puts "Missing executable definition for instance \"#{instance}\""
         puts "Initializing executable definition for instance \"#{instance}\""
 
@@ -103,14 +105,36 @@ class LayoutManager
 
   def launch_executables(executables_mapping)
     executables_mapping.each do |instance, executable|
-      `#{executable} &`
+      puts "Executing: #{executable}"
+      system("#{executable} &")
     end
   end
 
-  def decomment_layout(layout)
-    layout
+  def process_layout(layout)
+    without_comments = layout
       .gsub(/\/\/ "/, '  "')
       .gsub(/\/\/.*/, '')
+
+    without_title = without_comments.gsub(/^.*?"title":.*\n/, "")
+
+    lines = without_title.split("\n")
+    trailing_comma_repaired =
+      lines
+      .each_with_index
+      .map do |line, index|
+        next_index = index + 1
+        next line if next_index >= lines.length
+
+        next_line = lines[next_index]
+        if line.include?(",") && next_line.match?(/ *?}/)
+          with_comma_removed = line.gsub(/,$/,"")
+          with_comma_removed
+        else
+          line
+        end
+      end.join("\n")
+
+      trailing_comma_repaired
   end
 
   # def clean_layout(layout)
@@ -130,7 +154,7 @@ command = ARGV[0]
 layouts_directory = "#{File.expand_path('~')}/.config/i3/layouts"
 map_file = "#{layouts_directory}/map.json"
 executable_manager = ExecutableManager.new(map_file)
-layout_manager = LayoutManager.new(layouts_directory, executable_manager)
+layout_manager = LayoutManager.new(layouts_directory, executable_manager, true)
 
 case command
 when "save"

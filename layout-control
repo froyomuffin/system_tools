@@ -9,12 +9,26 @@ function save {
   SLOT=$2
   LAYOUT_FILE="$LAYOUTS_DIR/$SLOT.layout"
 
-
-  TREE=$(i3-save-tree --workspace $WORKSPACE | sed 's|^\(\s*\)// "|\1"|g; /^\s*\/\//d' | grep -v 'title')
+  TREE=$(i3-save-tree --workspace $WORKSPACE | sed 's|^\(\s*\)// "|\1"|g; /^\s*\/\//d' | grep -v '"title"')
 
   echo "Saving workspace $WORKSPACE to $LAYOUT_FILE"
-
   echo "$TREE" > $LAYOUT_FILE
+
+  echo "Updating mapping"
+  INSTANCES=$(echo "$TREE" | grep '"instance"' | awk -F':' '{ print $2 }' | sed 's/,//g' | sed 's/"//g')
+
+  for INSTANCE in $INSTANCES; do
+    RESULT=`layout-binary-finder get "$INSTANCE"`
+
+    echo "Processing entry for \"$INSTANCE\""
+
+    if [ -z "$RESULT" ]; then
+      echo "Entry not found. Initializing it."
+      layout-binary-finder set "$INSTANCE"
+    else
+      echo "Entry found: \"$RESULT\""
+    fi
+  done
 }
 
 function load {
@@ -22,36 +36,44 @@ function load {
   WORKSPACE=$2
   LAYOUT_FILE="$LAYOUTS_DIR/$SLOT.layout"
 
-
   if [ ! -f $LAYOUT_FILE ]; then
     echo "No layouts saved at slot $SLOT"
   else
     echo "Loading $LAYOUT_FILE to workspace $WORKSPACE"
 
-    INSTANCES=$(cat $LAYOUT_FILE | grep '"instance"' | awk '{ print $2 }' | sed 's/,//g')
-    EXECUTABLES=$(cat $LAYOUT_FILE | grep '"executable"' | awk '{ print $2 }' | sed 's/,//g')
+    INSTANCES=$(cat $LAYOUT_FILE | grep '"instance"' | awk -F':' '{ print $2 }' | sed 's/,//g' | sed 's/"//g')
 
-    if [[ $(echo "$INSTANCES" | wc -l) -eq $(echo "$EXECUTABLES" | wc -l) ]]; then
-      echo "Creating layout"
-      i3-msg "workspace $WORKSPACE; append_layout $LAYOUT_FILE"
-      
-      echo "Starting executables"
-      for EXECUTABLE in $EXECUTABLES; do
-        echo $EXECUTABLE
-        eval $EXECUTABLE
-      done
-    else
-      echo "Some instances don't have defined executables. Aborting."
-    fi
+    echo "Checking for binaries"
+    for INSTANCE in $INSTANCES; do
+      RESULT=`layout-binary-finder get "$INSTANCE"`
+
+      echo "Checking entry for \"$INSTANCE\""
+
+      if [ -z "$RESULT" ]; then
+        echo "Entry not found. Aborting."
+        notify-send "Entry for \"$INSTANCE\" not found. Aborting"
+        exit
+      else
+        echo "Entry found: \"$RESULT\""
+      fi
+    done
+
+    echo "Creating layout"
+    i3-msg "workspace $WORKSPACE; append_layout $LAYOUT_FILE"
+
+    echo "Starting executables"
+    for INSTANCE in $INSTANCES; do
+      echo "ISNTANCE: $INSTANCE"
+      RESULT=`layout-binary-finder get "$INSTANCE"`
+
+      echo "Starting: $RESULT"
+      eval $RESULT &
+    done
   fi
 }
 
 function handle {
   CMD=$1
-
-  echo $1
-  echo $2 
-  echo $3
 
   case $CMD in
     save)
