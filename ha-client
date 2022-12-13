@@ -1,0 +1,57 @@
+#!/bin/ruby
+
+require 'faraday'
+require 'json'
+
+class HAClient
+  TOKEN=ENV["HA_TOKEN"]
+  HOST=ENV["HA_HOST"]
+  ID_MAP = {
+    living_room: "sensor.living_room_current_temperature",
+    office: "sensor.office_temperature",
+    bedroom: "sensor.bedroom_current_temperature",
+  }
+
+  def self.get_temperature(id)
+    id = id.to_sym
+
+    unless sensor_id = ID_MAP[id]
+      puts "Unknown location \"#{id}\". Exiting."
+      return 9001
+    end
+
+    destination = "http://#{HOST}:8123/api/states/#{sensor_id}"
+    params = nil
+    headers = {
+      "Authorization" => "Bearer #{TOKEN}",
+      "Content-Type" => "application/json",
+    }
+
+    response = Faraday.get(destination, params, headers)
+
+    if response.status != 200
+      puts "Received an error: #{reponse.status}"
+      puts reponse.body
+
+      return 9001
+    end
+
+    result = JSON.parse(response.body)
+    result["state"]
+  end
+end
+
+command = ARGV[0]
+case command
+when "get-temperature"
+  unless room = ARGV[1]
+    puts "Missing room argument"
+    return
+  end
+
+  puts HAClient.get_temperature(room)
+when nil
+  puts "Missing command"
+else
+  puts "Unknown command: \"#{command}\""
+end
