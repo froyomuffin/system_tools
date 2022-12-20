@@ -1,0 +1,10 @@
+[Unit]
+Description=Manage fan controller resume
+After=suspend.target
+
+[Service]
+Type=oneshot
+ExecStart=sudo /bin/fan-control resume
+
+[Install]
+WantedBy=suspend.target

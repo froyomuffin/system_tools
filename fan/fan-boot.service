@@ -1,0 +1,14 @@
+[Unit]
+Description=A small service to resume fan speeds on boot
+#After=graphical.target
+
+[Service]
+Type=oneshot
+ExecStart=sudo /bin/fan-control resume
+Restart=on-failure
+RestartSec=5s
+RemainAfterExit=true
+StandardOutput=journal
+
+[Install]
+WantedBy=multi-user.target

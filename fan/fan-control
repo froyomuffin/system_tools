@@ -1,0 +1,206 @@
+#!/bin/ruby
+
+class Fan
+  def initialize(
+    name:, type:,
+    hwmon_root:,
+    hwmon_id:,
+    pwm_id:,
+    quiet_target_percent:,
+    performance_target_percent:,
+    test: false
+  )
+    @name = name
+    @type = type
+    @hwmon_root = hwmon_root
+    @pwm_id = "hwmon#{hwmon_id}/pwm#{pwm_id}"
+
+    pwm_min_file = "#{@hwmon_root}/#{@pwm_id}_min"
+    pwm_max_file = "#{@hwmon_root}/#{@pwm_id}_max"
+
+    @pwm_min = File.file?(pwm_min_file) ? File.read(pwm_min_file).to_i : 0
+    @pwm_max = File.file?(pwm_max_file) ? File.read(pwm_max_file).to_i : 255
+
+    @quiet_target_percent = quiet_target_percent
+    @performance_target_percent = performance_target_percent
+
+    @test = test
+  end
+
+  def get_stats
+    {
+      name: @name,
+      type: @type,
+      current_speed: get_speed,
+      hwmon_root: @hwmon_root,
+      pwm_id: @pwm_id,
+      quiet_target_percent: @quiet_target_percent,
+      performance_target_percent: @performance_target_percent,
+    }
+  end
+
+  def get_speed
+    pwm_range = @pwm_max - @pwm_min
+
+    pwm_path = "#{@hwmon_root}/#{@pwm_id}"
+    pwm_value = File.read(pwm_path).to_i
+
+    percent = (pwm_value - @pwm_min) * (100.0 / @pwm_max)
+    percent.ceil
+  end
+
+  def enable_manual_control
+    enable_path = "#{@hwmon_root}/#{@pwm_id}_enable"
+
+    File.write(enable_path, 1)
+  end
+
+  def disable_manual_control
+    enable_path = "#{@hwmon_root}/#{@pwm_id}_enable"
+
+    File.write(enable_path, 2)
+  end
+
+  def set_mode(mode)
+    puts "Setting fan \"#{@name}\" of type \"#{@type}\" to #{mode} mode"
+
+    case mode
+    when "quiet"
+      set_speed(@quiet_target_percent)
+    when "performance"
+      set_speed(@performance_target_percent)
+    end
+  end
+
+  private
+
+  def set_speed(percent)
+    pwm_range = @pwm_max - @pwm_min
+    pwm_value = @pwm_min + (percent / 100.0 * @pwm_max).floor
+
+    pwm_path = "#{@hwmon_root}/#{@pwm_id}"
+
+    puts "Setting \"#{pwm_path}\" to #{percent}% (#{pwm_value})"
+
+    File.write(pwm_path, pwm_value) unless @test
+  end
+end
+
+class FanFactory
+  HWMON_ROOT = "/sys/class/hwmon"
+
+  def initialize(definitions)
+    @definitions = definitions
+    @type_map = build_type_map
+  end
+
+  def build_fans(test: false)
+    @definitions.map do |definition|
+      hwmon_id = find_hwmon_id(definition[:type])
+      Fan.new(
+        name: definition[:name],
+        type: definition[:type],
+        hwmon_root: HWMON_ROOT,
+        hwmon_id: hwmon_id,
+        pwm_id: definition[:pwm_id],
+        quiet_target_percent: definition[:quiet_target_percent],
+        performance_target_percent: definition[:performance_target_percent],
+        test: test,
+      )
+    end
+  end
+
+  def build_type_map
+    hwmon_list = Dir["#{HWMON_ROOT}/*"]
+
+    raw_map = hwmon_list.map do |hwmon_path|
+      name_file = "#{hwmon_path}/name"
+      type = File.read(name_file).strip
+      hwmon = hwmon_path.split('/').last
+
+      [type, hwmon]
+    end.group_by(&:first)
+
+    raw_map.map do |type, results|
+      [type, results.map { |type, value| value }]
+    end.to_h
+  end
+
+  def find_hwmon_id(type)
+    @type_map[type]&.first[-1].to_i 
+  end
+end
+
+class FanController
+  DEFINITIONS = [
+    { name: "cpu", pwm_id: 1, type: "nct6798", quiet_target_percent: 35, performance_target_percent: 50 },
+    { name: "case", pwm_id: 5, type: "nct6798", quiet_target_percent: 35, performance_target_percent: 50 },
+    { name: "gpu", pwm_id: 1, type: "amdgpu", quiet_target_percent: 35, performance_target_percent: 65 },
+  ]
+
+  HISTORY_FILE = "/var/tmp/fan-controller.last"
+  TMP_HISTORY_FILE = "/tmp/fan-controller.last"
+
+  def initialize
+      @fans = FanFactory.new(DEFINITIONS).build_fans
+      @fans.each(&:enable_manual_control)
+
+      unless File.file?(HISTORY_FILE)
+        puts "Creating history file to: \"#{HISTORY_FILE}\""
+        File.write(HISTORY_FILE, "quiet")
+      end
+
+      unless File.file?(TMP_HISTORY_FILE)
+        puts "Creating temp history file to: \"#{TMP_HISTORY_FILE}\""
+        File.write(TMP_HISTORY_FILE, "quiet")
+      end
+  end
+
+  def set_mode(mode)
+    @fans.each { |fan| fan.set_mode(mode) }
+    File.write(HISTORY_FILE, mode)
+    File.write(TMP_HISTORY_FILE, mode)
+  end
+
+  def get_mode
+    File.read(TMP_HISTORY_FILE).strip
+  end
+
+  def get_stats
+    @fans.map(&:get_stats)
+  end
+
+  def resume
+    mode = File.file?(HISTORY_FILE) ? File.read(HISTORY_FILE).strip : "quiet"
+    set_mode(mode)
+  end
+end
+
+if ENV['USER'] != 'root'
+  puts "This script must be run as root."
+  exit
+end
+
+command = ARGV[0]
+
+controller = FanController.new
+
+case command
+when "resume"
+  controller.resume
+when "set_mode"
+  mode = ARGV[1]
+  unless ["performance", "quiet"].include?(mode)
+    puts "Unknown mode: #{mode}"
+    exit
+  end
+
+  controller.set_mode(mode)
+when "get_mode"
+  puts controller.get_mode
+when "get_stats"
+  puts controller.get_stats
+else
+  puts "Unknown command: #{command}"
+  exit
+end
