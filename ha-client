@@ -38,6 +38,11 @@ class HAClient
 
     result = JSON.parse(response.body)
     result["state"]
+  rescue StandardError => e
+    puts "Exception:"
+    puts e.message
+
+    return 9001
   end
 end
 
