@@ -1,0 +1,6 @@
+#!/bin/bash
+
+CPU_TEMP=$(sensors | grep Tccd1 | awk '{ print $2 }' | sed "s/+//g" | sed "s/°C//g")
+GPU_TEMP=$(sensors | grep junction | awk '{ print $2 }' | sed "s/+//g" | sed "s/°C//g")
+
+echo -e "CPU: $CPU_TEMP°C\nGPU: $GPU_TEMP°C"
