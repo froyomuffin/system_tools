@@ -135,7 +135,7 @@ class FanController
   DEFINITIONS = [
     { name: "cpu", pwm_id: 1, type: "nct6798", quiet_target_percent: 35, performance_target_percent: 50 },
     { name: "case", pwm_id: 5, type: "nct6798", quiet_target_percent: 35, performance_target_percent: 50 },
-    { name: "gpu", pwm_id: 1, type: "amdgpu", quiet_target_percent: 35, performance_target_percent: 65 },
+    { name: "gpu", pwm_id: 1, type: "amdgpu", quiet_target_percent: 35, performance_target_percent: 60 },
   ]
 
   HISTORY_FILE = "/var/tmp/fan-controller.last"
