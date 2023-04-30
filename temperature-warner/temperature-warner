@@ -2,9 +2,11 @@
 
 class Notifier
   CMD='/bin/notify-send'
-  def notify(message:, critical: false)
+  def notify(message:, critical: false, timeout: 3)
+    timeout *= 1000
     command = "#{CMD} 'Temperature Warner' \"#{message}\""
     command += " -u 'critical'" if critical
+    command += " -t #{timeout}"
     system(command)
   end
 end
@@ -38,12 +40,16 @@ class TemperatureWarner
   end
 
   def monitor
-    @notifier.notify(message: "Monitor starting")
+    starting_message = build_starting_message
+    @notifier.notify(
+      message: starting_message,
+      timeout: 5
+    )
     loop do
       @monitors.each do |monitor|
         #puts "Checking #{monitor.name}"
         if monitor.triggered?
-          message = "#{monitor.name} temperature #{monitor.temperature} exceeded threshold of #{monitor.threshold}"
+          message = "#{monitor.name} temperature #{monitor.temperature} exceeded threshold of #{monitor.threshold}°C"
           puts message
           @notifier.notify(
             message: message,
@@ -56,6 +62,14 @@ class TemperatureWarner
 
       sleep @period
     end
+  end
+
+  private
+
+  def build_starting_message
+    header = "Monitor started:"
+    monitor_deets = @monitors.map { |monitor| "#{monitor.name}: #{monitor.threshold}°C" }.map { _1.prepend("  ") }
+    monitor_deets.prepend(header).join("\n")
   end
 end
 
