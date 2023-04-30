@@ -1,0 +1,9 @@
+[Unit]
+Description=A small service to monitor temperatures
+
+[Service]
+Type=simple
+ExecStart=/bin/temperature-warner
+
+[Install]
+WantedBy=default.target
