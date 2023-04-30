@@ -1,0 +1,13 @@
+[Unit]
+Description=Solaar
+
+[Service]
+Type=simple
+ExecStart=/bin/solaar -w hide
+Restart=on-failure
+RestartSec=5s
+RemainAfterExit=true
+StandardOutput=journal
+
+[Install]
+WantedBy=default.target
