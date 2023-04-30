@@ -3,7 +3,7 @@
 class Notifier
   CMD='/bin/notify-send'
   def notify(message:, critical: false)
-    command = "#{CMD} 'Temperature Warner' '#{message}'"
+    command = "#{CMD} 'Temperature Warner' \"#{message}\""
     command += " -u 'critical'" if critical
     system(command)
   end
