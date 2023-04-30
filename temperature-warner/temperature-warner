@@ -49,7 +49,7 @@ class TemperatureWarner
       @monitors.each do |monitor|
         #puts "Checking #{monitor.name}"
         if monitor.triggered?
-          message = "#{monitor.name} temperature #{monitor.temperature} exceeded threshold of #{monitor.threshold}°C"
+          message = "#{monitor.name} temperature of #{monitor.temperature}°C exceeds threshold of #{monitor.threshold}°C"
           puts message
           @notifier.notify(
             message: message,
@@ -68,7 +68,7 @@ class TemperatureWarner
 
   def build_starting_message
     header = "Monitor started:"
-    monitor_deets = @monitors.map { |monitor| "#{monitor.name}: #{monitor.threshold}°C" }.map { _1.prepend("  ") }
+    monitor_deets = @monitors.map { |monitor| "#{monitor.name} with threshold of #{monitor.threshold}°C" }.map { _1.prepend("  ") }
     monitor_deets.prepend(header).join("\n")
   end
 end
