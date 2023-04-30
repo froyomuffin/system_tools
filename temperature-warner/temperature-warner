@@ -53,7 +53,8 @@ class TemperatureWarner
           puts message
           @notifier.notify(
             message: message,
-            critical: true
+            critical: true,
+            timeout: 9
           )
         else
           #puts "A-OK"
