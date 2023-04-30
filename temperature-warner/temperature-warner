@@ -49,7 +49,7 @@ class TemperatureWarner
       @monitors.each do |monitor|
         #puts "Checking #{monitor.name}"
         if monitor.triggered?
-          message = "#{monitor.name} temperature of #{monitor.temperature}°C exceeds threshold of #{monitor.threshold}°C"
+          message = "#{monitor.name}: Current temperature of #{monitor.temperature}°C exceeds threshold of #{monitor.threshold}°C"
           puts message
           @notifier.notify(
             message: message,
