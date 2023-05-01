@@ -76,6 +76,12 @@ class LayoutManager
     end
   end
 
+  def current
+    command="/usr/bin/i3-msg -t get_workspaces"
+    workspace_tree = `#{command}`
+    JSON.parse(workspace_tree).select { _1["focused"] }.first["num"]
+  end
+
   private
 
   def extract_executables(layout)
@@ -167,6 +173,8 @@ when "load"
   workspace = ARGV[2]
 
   layout_manager.load(slot, workspace)
+when "current"
+  puts layout_manager.current
 else
   puts "Unknown command: #{command}"
 end
