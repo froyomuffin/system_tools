@@ -16,10 +16,12 @@ class TemperatureMonitor
   attr_reader :temperature
   attr_reader :threshold
 
-  def initialize(name:, monitor_cmd:, threshold:)
+  def initialize(name:, monitor_cmd:, threshold:, confirmation_checks: 0, check_period: 2)
     @name = name
     @monitor_cmd = monitor_cmd
     @threshold = threshold
+    @checks = 1 + confirmation_checks
+    @check_period = check_period
   end
 
   def update
@@ -29,7 +31,19 @@ class TemperatureMonitor
   end
 
   def triggered?
-    @temperature > @threshold
+    update
+
+    if @temperature > @threshold
+      @checks.times do |time|
+        return false unless @temperature > @threshold
+
+        sleep @check_period if @checks > 1
+      end
+
+      true
+    else
+      false
+    end
   end
 end
 
@@ -49,7 +63,6 @@ class TemperatureWarner
     loop do
       @monitors.each do |monitor|
         #puts "Checking #{monitor.name}"
-        monitor.update
         if monitor.triggered?
           message = "#{monitor.name}: Current temperature of #{monitor.temperature}°C exceeds threshold of #{monitor.threshold}°C"
           puts message
@@ -80,12 +93,14 @@ cpu_monitor = TemperatureMonitor.new(
   name: "CPU",
   monitor_cmd: "sensors | grep Tccd1 | awk '{ print $2 }' | sed 's/+//g' | sed 's/°C//g'",
   threshold: 80,
+  confirmation_checks: 2,
 )
 
 gpu_monitor = TemperatureMonitor.new(
   name: "GPU",
   monitor_cmd: "sensors | grep junction | awk '{ print $2 }' | sed 's/+//g' | sed 's/°C//g'",
   threshold: 90,
+  confirmation_checks: 2,
 )
 
 notifier = Notifier.new
