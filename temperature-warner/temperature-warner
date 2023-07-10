@@ -92,15 +92,15 @@ end
 cpu_monitor = TemperatureMonitor.new(
   name: "CPU",
   monitor_cmd: "sensors | grep Tccd1 | awk '{ print $2 }' | sed 's/+//g' | sed 's/°C//g'",
-  threshold: 80,
-  confirmation_checks: 2,
+  threshold: 85,
+  confirmation_checks: 5,
 )
 
 gpu_monitor = TemperatureMonitor.new(
   name: "GPU",
   monitor_cmd: "sensors | grep junction | awk '{ print $2 }' | sed 's/+//g' | sed 's/°C//g'",
   threshold: 90,
-  confirmation_checks: 2,
+  confirmation_checks: 5,
 )
 
 notifier = Notifier.new
