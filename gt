@@ -2,15 +2,22 @@
 
 [ -z "$ROOT_GIT_DIR" ] && echo "Root git dir doesn't exist" && return
 
-DESIRED_REPO="$1"
+THIS=$(realpath "$0")
+INPUT="$1"
+
+alias gt=". $THIS"
+
+[ "$INPUT" = "load" ] && return
+
+DESIRED_REPO="$INPUT"
 
 if [ -z "$DESIRED_REPO" ]; then
   RESULT=$(ls $ROOT_GIT_DIR | fzf --height=20)
-  [ -e "$ROOT_GIT_DIR/$RESULT" ] && cd "$ROOT_GIT_DIR/$RESULT" && return
+  [[ ! -z "$RESULT" ]] && [ -e "$ROOT_GIT_DIR/$RESULT" ] && cd "$ROOT_GIT_DIR/$RESULT" && return
 else
   RESULT=$(ls $ROOT_GIT_DIR | grep $DESIRED_REPO)
-  [ $(echo "$RESULT" | wc -l) -eq 1 ] && cd "$ROOT_GIT_DIR/$RESULT" && return
+  [[ ! -z "$RESULT" ]] && [ $(echo "$RESULT" | wc -l) -eq 1 ] && cd "$ROOT_GIT_DIR/$RESULT" && return
 
   RESULT=$(ls $ROOT_GIT_DIR | fzf --height=20 -q $DESIRED_REPO)
-  [ -e "$ROOT_GIT_DIR/$RESULT" ] && cd "$ROOT_GIT_DIR/$RESULT" && return
+  [[ ! -z "$RESULT" ]] && [ -e "$ROOT_GIT_DIR/$RESULT" ] && cd "$ROOT_GIT_DIR/$RESULT" && return
 fi
