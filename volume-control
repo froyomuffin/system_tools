@@ -1,121 +1,63 @@
 #!/bin/bash
 
-function mute {
-  pactl set-sink-mute @DEFAULT_SINK@ true
-}
+XOBSERVICE="$HOME/.config/xob/service"
 
-function unmute {
-  pactl set-sink-mute @DEFAULT_SINK@ false
+function update-bar {
+  VALUE=$1
+
+  $XOBSERVICE update $VALUE
 }
 
 function muted {
-  pactl get-sink-mute @DEFAULT_SINK@ | sed 's/.*: //g'
+  wpctl get-volume @DEFAULT_AUDIO_SINK@ | grep MUTED &>/dev/null && return 0 || return 1
 }
 
 function toggle-mute {
-  MUTED=$(muted)
+  wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
 
-  case $MUTED in
-    no)
-      mute
-      ;;
-    yes)
-      unmute
-      ;;
-  esac
+  muted && update-bar 0 || update-bar $(get-volume)
+}
+
+function unmute {
+  wpctl set-mute @DEFAULT_AUDIO_SINK@ 0
 }
 
 function get-volume {
-  LEFT_VOLUME=$(get-volumes | grep 'left' | sed 's/.*://g')
-  RIGHT_VOLUME=$(get-volumes | grep 'right' | sed 's/.*://g')
+  wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{ print $NF*100 }'
+}
 
-  if [ $LEFT_VOLUME -eq 0 ] || [ $RIGHT_VOLUME -eq 0 ]; then
-    echo 0
-  else
-    MAX=$(( LEFT_VOLUME > RIGHT_VOLUME ? LEFT_VOLUME : RIGHT_VOLUME ))
-    echo $MAX
-  fi
+function set-volume {
+  VALUE=$1
+  wpctl set-volume @DEFAULT_AUDIO_SINK@ $VALUE
+
+  update-bar $(get-volume)
 }
 
 function increase-volume {
   INCREMENT=$1
-  BALANCE=$2
 
   unmute
-  set-volumes +"$INCREMENT%"
-  balance-volumes $BALANCE
+  set-volume "$INCREMENT%+"
 }
 
 function decrease-volume {
   DECREMENT=$1
-  BALANCE=$2
 
   unmute
-  set-volumes -"$DECREMENT%"
-  balance-volumes $BALANCE
-}
-
-function get-volumes {
-  pactl get-sink-volume @DEFAULT_SINK@ | grep -v balance | sed 's/Volume: //g' | sed 's/,/\n/g' | sed 's/ *//g' | perl -pe 's/:.*\/([0-9]*)%.*/:\1/g'
-}
-
-function set-volumes {
-  pactl set-sink-volume @DEFAULT_SINK@ $*
-}
-
-function balance-volumes {
-  # % Right over left channel
-  BALANCE=$1
-
-  LEFT_VOLUME=$(get-volumes | grep 'left' | sed 's/.*://g')
-  RIGHT_VOLUME=$(get-volumes | grep 'right' | sed 's/.*://g')
-
-  CURRENT_BALANCE=$(expr $RIGHT_VOLUME - $LEFT_VOLUME)
-
-  if [ $CURRENT_BALANCE -eq $BALANCE ]; then
-    echo "Balance of \"$BALANCE\" already maintained"
-  else
-    echo "Adjusting for right over left balance of: $BALANCE"
-
-    LEFT_EDGE_VOLUME=$(expr $LEFT_VOLUME - $BALANCE)
-    RIGHT_EDGE_VOLUME=$(expr $RIGHT_VOLUME + $BALANCE)
-
-    echo "$LEFT_VOLUME -> $LEFT_EDGE_VOLUME"
-    echo "$RIGHT_VOLUME -> $RIGHT_EDGE_VOLUME"
-
-    # TODO: Generalize to handle opposite balance
-    if [ $LEFT_EDGE_VOLUME -le 0 ]; then
-      echo "Left edge hit"
-
-      CALCULATED_RIGHT_VOLUME=$(expr 0 + $BALANCE)
-
-      set-volumes 0% "$CALCULATED_RIGHT_VOLUME%"
-    elif [ $RIGHT_EDGE_VOLUME -ge 100 ]; then
-      echo "Right edge hit"
-
-      CALCULATED_LEFT_VOLUME=$(expr 100 - $BALANCE)
-
-      set-volumes "$CALCULATED_LEFT_VOLUME%" 100%
-    else
-      CALCULATED_LEFT_VOLUME=$(expr $RIGHT_VOLUME - $BALANCE)
-
-      set-volumes "$CALCULATED_LEFT_VOLUME%" "$RIGHT_VOLUME%"
-    fi
-  fi
+  set-volume "$DECREMENT%-"
 }
 
 function handle {
   INPUT=$1
 
   VOLUME_INCREMENT=5
-  RIGHT_OVER_LEFT_BALANCE=4
 
   case $INPUT in
     up)
-      increase-volume $VOLUME_INCREMENT $RIGHT_OVER_LEFT_BALANCE
+      increase-volume $VOLUME_INCREMENT
       ;;
     down)
-      decrease-volume $VOLUME_INCREMENT $RIGHT_OVER_LEFT_BALANCE
+      decrease-volume $VOLUME_INCREMENT
       ;;
     muted)
       muted
@@ -125,9 +67,6 @@ function handle {
       ;;
     volume)
       get-volume
-      ;;
-    volumes)
-      get-volumes
       ;;
     *)
       echo "Unknown command: $1"
