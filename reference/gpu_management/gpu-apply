@@ -1,0 +1,84 @@
+#!/bin/bash
+
+# https://stackoverflow.com/questions/28195805/running-notify-send-as-root
+function notify-send {
+    # Detect the name of the display in use
+    local display=":$(ls /tmp/.X11-unix/* | sed 's#/tmp/.X11-unix/X##' | head -n 1)"
+
+    # Hardcoding the user here
+    local user="tw"
+
+    # Detect the id of the user
+    local uid=$(id -u $user)
+
+    sudo -u $user DISPLAY=$display DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$uid/bus notify-send "$@"
+}
+
+function notify {
+  echo "[GPU Manager] $*"
+  notify-send "GPU Manager" "$*"
+}
+
+function find_device {
+  DEVICES_ROOT='/sys/devices'
+  TARGET_DEVICE_ID='0x73bf' # AMD Radeon RX 6900 XT
+
+  DEVICE=$(rg -g 'device' -l $TARGET_DEVICE_ID $DEVICES_ROOT | sed 's/\/device$//g')
+
+  notify "Setting GPU_DEVICE to \"$DEVICE\""
+
+  GPU_DEVICE=$DEVICE
+  CLOCK_FILE="$GPU_DEVICE/pp_od_clk_voltage"
+  DEVICE_ID_FILE="$GPU_DEVICE/device"
+}
+
+function confirm_device {
+  EXPECTED_DEVICE_ID='0x73bf' # AMD Radeon RX 6900 XT
+  DEVICE_ID=$(cat $DEVICE_ID_FILE)
+
+  if [ "$DEVICE_ID" != "$EXPECTED_DEVICE_ID" ]; then
+    notify "GPU mismatch. Expected \"$EXPECTED_DEVICE_ID\", got \"$DEVICE_ID\". Exiting."
+
+    exit
+  fi
+}
+
+function confirm_user {
+  if [ $(whoami) != "root" ]; then
+    notify "This script must be run as root. Exiting."
+
+    exit
+  fi
+}
+
+function set_gpu_clock {
+  CLOCK=2100
+  echo "s 1 $CLOCK" > $CLOCK_FILE
+
+  notify "Set gpu clock to $CLOCK"
+}
+
+function commit_gpu_clock {
+  echo "c" > $CLOCK_FILE
+
+  notify "Commited gpu clock"
+}
+
+function print_gpu_clock {
+  CLOCK=$(cat $CLOCK_FILE | grep -a -A2 "OD_SCLK" | grep '1:' | sed 's/1: //g' | sed 's/Mhz//g')
+
+  notify "Current gpu clock set to $CLOCK"
+}
+
+function run {
+  notify "Starting"
+
+  confirm_user
+  find_device
+  confirm_device
+  set_gpu_clock
+  commit_gpu_clock
+  print_gpu_clock
+}
+
+run

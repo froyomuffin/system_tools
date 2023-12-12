@@ -1,0 +1,14 @@
+[Unit]
+Description=A service that sets GPU settings
+#After=graphical.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/gpu-apply
+Restart=on-failure
+RestartSec=5s
+RemainAfterExit=true
+StandardOutput=journal
+
+[Install]
+WantedBy=multi-user.target
