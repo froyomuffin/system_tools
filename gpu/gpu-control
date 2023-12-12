@@ -1,0 +1,124 @@
+#!/bin/ruby
+
+require 'json'
+
+class Gpu 
+  def initialize(name:, device_id:)
+    @name = name
+    @device_id = device_id
+    @clock_file = get_clock_file
+
+    raise "Unable to find clock file for device #{device_id}" if @clock_file.empty?
+
+    @original_clock_file = "/tmp/gpu-controller-#{@device_id}.original"
+    save_original_clock
+
+    puts "Using clock file #{@clock_file} for device #{device_id}"
+  end
+
+  def get_stats
+    {
+      name: @name,
+      device_id: @device_id,
+      current_clock: get_clock,
+      original_clock: get_original_clock,
+      clock_file: @clock_file,
+      original_clock_file: @original_clock_file,
+    }
+  end
+
+  def get_original_clock
+    File.read(@original_clock_file).strip.to_i
+  end
+
+  def get_clock
+    command = "cat #{@clock_file} | grep -a -A2 'OD_SCLK' | grep '1:' | sed 's/1: //g' | sed 's/Mhz//g'"
+
+    `#{command}`.delete("\n").to_i
+  end
+
+  def set_clock(clock)
+    # Only handle shader right now
+    clock_string = "s 1 #{clock}"
+    puts "Setting target clock to #{clock}"
+    File.write(@clock_file, clock_string)
+    commit
+  end
+
+  private
+
+  def commit
+    puts "Committing changes"
+    File.write(@clock_file, "c")
+  end
+
+  def get_clock_file
+    command = "rg -g 'device' -l #{@device_id} /sys/devices | sed 's/device$//g'"
+    dir = `#{command}`.delete("\n")
+
+    clock_file = "#{dir}pp_od_clk_voltage"
+
+    File.file?(clock_file) ? clock_file : ""
+  end
+
+
+  def save_original_clock
+    if File.file?(@original_clock_file)
+      original_clock = get_original_clock
+      puts "Read original clock of #{original_clock} from file #{@original_clock_file}"
+    else
+      original_clock = get_clock
+      puts "Writing original clock of #{original_clock} to file #{@original_clock_file}"
+      File.write(@original_clock_file, original_clock)
+    end
+  end
+end
+
+class GpuController
+  DEFINITION = { name: "RX 6900 XT", device_id: "0x73bf", target_clock: 2100 }
+
+  def initialize
+    @gpu = Gpu.new(
+      name: DEFINITION[:name],
+      device_id: DEFINITION[:device_id],
+    )
+
+    @target_clock = DEFINITION[:target_clock]
+  end
+
+  def get_stats
+    gpu_stats = @gpu.get_stats
+    {
+      name: gpu_stats[:name],
+      device_id: gpu_stats[:device_id],
+      clock_file: gpu_stats[:clock_file],
+      original_clock_file: gpu_stats[:original_clock_file],
+      target_clock: @target_clock,
+      current_clock: gpu_stats[:current_clock],
+      original_clock: gpu_stats[:original_clock],
+    }
+  end
+
+  def resume
+    @gpu.set_clock(@target_clock)
+  end
+end
+
+if ENV['USER'] != 'root'
+  puts "This script must be run as root."
+  exit
+end
+
+command = ARGV[0]
+
+controller = GpuController.new
+
+case command
+when "resume"
+  controller.resume
+when "get_stats"
+  puts JSON.pretty_generate(controller.get_stats)
+else
+  puts "Unknown command: #{command}"
+  exit
+end
