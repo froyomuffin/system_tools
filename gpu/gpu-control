@@ -45,6 +45,12 @@ class Gpu
     commit
   end
 
+  def reset
+    puts "Resetting clock"
+    File.write(@clock_file, "r")
+    commit
+  end
+
   private
 
   def commit
@@ -102,6 +108,10 @@ class GpuController
   def resume
     @gpu.set_clock(@target_clock)
   end
+
+  def reset
+    @gpu.reset
+  end
 end
 
 if ENV['USER'] != 'root'
@@ -116,6 +126,8 @@ controller = GpuController.new
 case command
 when "resume"
   controller.resume
+when "reset"
+  controller.reset
 when "get_stats"
   puts JSON.pretty_generate(controller.get_stats)
 else
