@@ -114,9 +114,11 @@ class GpuController
   end
 end
 
-if ENV['USER'] != 'root'
-  puts "This script must be run as root."
-  exit
+def check_root
+  if ENV['USER'] != 'root'
+    puts "This command must be run as root."
+    exit
+  end
 end
 
 command = ARGV[0]
@@ -125,8 +127,10 @@ controller = GpuController.new
 
 case command
 when "resume"
+  check_root
   controller.resume
 when "reset"
+  check_root
   controller.reset
 when "get_stats"
   puts JSON.pretty_generate(controller.get_stats)
