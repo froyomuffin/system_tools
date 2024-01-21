@@ -1,0 +1,32 @@
+#!/bin/bash
+
+function wait_for_mount {
+  MOUNT=$1
+
+  echo "Put keyboard into bootloader mode"
+  echo "Waiting for keyboard to mount to \"$MOUNT\"..."
+  while true; do
+    ls $MOUNT &>/dev/null && echo "Found" && break
+    sleep 1
+  done
+}
+
+function flash {
+  FIRMWARE=$1
+  MOUNT=$2
+
+  echo "Flashing..."
+
+  cp $FIRMWARE $MOUNT && echo "Done" || echo "Failed"
+}
+
+FIRMWARE=$1
+MOUNT=$2
+
+[ -z $FIRMWARE ] && echo "Missing firmware" && exit
+[ -z $MOUNT ] && echo "Missing mount" && exit
+
+echo "Flashing \"$FIRMWARE\" to \"$MOUNT\""
+
+wait_for_mount $MOUNT
+flash $FIRMWARE $MOUNT
