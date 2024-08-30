@@ -64,6 +64,7 @@ class LayoutManager
   end
 
   def load(slot, workspace)
+    puts "Loading slot #{slot} to workspace #{workspace}"
     layout_file = "#{@layout_directory}/#{slot}.layout"
     layout = File.read(layout_file)
 
@@ -74,6 +75,15 @@ class LayoutManager
       apply_layout(slot, workspace)
       launch_executables(executable_mapping)
     end
+  end
+
+  # Directly load layout number to same work space number. Bit of a shortcut but only use case so far.
+  def load_all
+    layouts = Dir["#{@layout_directory}/*.layout"].map do |layout_file|
+      layout_file.match(/.*\/([0-9]+?).layout/)[1].to_i
+    end
+
+    layouts.each { |number| load(number, number) }
   end
 
   def current
@@ -89,7 +99,7 @@ class LayoutManager
       .split("\n")
       .grep(/instance/)
       .map(&:strip).map do |instance|
-        instance.match(/: "(.*?)",/)[1]
+        instance.match(/: "(.*?)"/)[1]
       end
 
     instances.map do |instance|
@@ -173,6 +183,8 @@ when "load"
   workspace = ARGV[2]
 
   layout_manager.load(slot, workspace)
+when "load_all"
+  layout_manager.load_all
 when "current"
   puts layout_manager.current
 else
