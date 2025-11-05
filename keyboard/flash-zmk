@@ -5,10 +5,11 @@ function wait_for_mount {
 
   echo "Put keyboard into bootloader mode"
   echo "Waiting for keyboard to mount to \"$MOUNT\"..."
-  while true; do
-    ls $MOUNT &>/dev/null && echo "Found" && break
+  while [ ! -d $MOUNT ]; do
     sleep 1
   done
+
+  echo "Found"
 }
 
 function flash {

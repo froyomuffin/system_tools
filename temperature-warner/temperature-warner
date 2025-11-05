@@ -16,12 +16,12 @@ class TemperatureMonitor
   attr_reader :temperature
   attr_reader :threshold
 
-  def initialize(name:, monitor_cmd:, threshold:, confirmation_checks: 0, check_period: 2)
+  def initialize(name:, monitor_cmd:, threshold:, confirmation_checks: 0, confirmation_period: 3)
     @name = name
     @monitor_cmd = monitor_cmd
     @threshold = threshold
     @checks = 1 + confirmation_checks
-    @check_period = check_period
+    @confirmation_period = confirmation_period
   end
 
   def update
@@ -35,9 +35,11 @@ class TemperatureMonitor
 
     if @temperature > @threshold
       @checks.times do |time|
+        update
+
         return false unless @temperature > @threshold
 
-        sleep @check_period if @checks > 1
+        sleep @confirmation_period if @checks > 1
       end
 
       true
@@ -48,7 +50,7 @@ class TemperatureMonitor
 end
 
 class TemperatureWarner
-  def initialize(monitors:, notifier:, period: 10)
+  def initialize(monitors:, notifier:, period: 5)
     @monitors = monitors
     @notifier = notifier
     @period = period
@@ -69,7 +71,7 @@ class TemperatureWarner
           @notifier.notify(
             message: message,
             critical: true,
-            timeout: 9
+            timeout: 2
           )
         else
           #puts "A-OK"

@@ -1,11 +1,13 @@
 #!/bin/bash
 
 XOBSERVICE="$HOME/.config/xob/service"
+WOBSERVICE="$HOME/.config/wob/service"
 
 function update-bar {
   VALUE=$1
 
   $XOBSERVICE update $VALUE
+  $WOBSERVICE update $VALUE
 }
 
 function muted {

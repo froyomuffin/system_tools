@@ -5,7 +5,7 @@
 THIS=$(realpath "$0")
 INPUT="$1"
 
-alias gt=". $THIS"
+alias gtt=". $THIS"
 
 [ "$INPUT" = "load" ] && return
 

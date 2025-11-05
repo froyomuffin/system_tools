@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CPU_TEMP=$(sensors | grep Tccd1 | awk '{ print $2 }' | sed "s/+//g" | sed "s/°C//g")
+CPU_TEMP=$(sensors | grep Tctl | awk '{ print $2 }' | sed "s/+//g" | sed "s/°C//g")
 GPU_TEMP=$(sensors | grep junction | awk '{ print $2 }' | sed "s/+//g" | sed "s/°C//g")
 GPU_CLOCK=$(gpu-control get_stats | grep "current\|original" | grep -v file | sed -E "s/.*: (.*)/\1/g" | sed 's/,//g' | xargs | sed 's/ /\//g')
 MODE=$(cat /var/tmp/fan-controller.last)
